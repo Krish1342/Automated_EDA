@@ -10,6 +10,7 @@ import uuid
 from datetime import datetime
 import asyncio
 
+from services.utils import clean_json
 from services.data_processor import DataProcessor
 from services.ai_agent import AIAgent
 from services.chart_generator import ChartGenerator
@@ -50,16 +51,18 @@ async def upload_file(file: UploadFile = File(...)):
             "dtypes": df.dtypes.astype(str).to_dict()
         }
         
-        return {
+        result =  {
             "file_id": file_id,
             "filename": file.filename,
             "shape": df.shape,
             "columns": df.columns.tolist(),
             "preview": df.head().to_dict('records')
         }
+        return clean_json(result)
         
     except Exception as e:
         # Clean up file if CSV parsing fails
+        print(f"Upload error: {e}")
         if os.path.exists(file_path):
             os.remove(file_path)
         raise HTTPException(status_code=400, detail=f"Error reading CSV file: {str(e)}")
@@ -115,7 +118,7 @@ async def process_data(
             else:
                 raise HTTPException(status_code=400, detail="Invalid operation")
         
-        return result
+        return clean_json(result)
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Processing error: {str(e)}")
@@ -132,7 +135,7 @@ async def get_charts(file_id: str, chart_types: Optional[str] = None):
     chart_generator = ChartGenerator()
     charts = chart_generator.generate_all_charts(df, chart_types)
     
-    return {"charts": charts}
+    return clean_json({"charts": charts})
 
 @router.get("/insights/{file_id}")
 async def get_ai_insights(file_id: str):
@@ -146,7 +149,7 @@ async def get_ai_insights(file_id: str):
     ai_agent = AIAgent()
     insights = await ai_agent.generate_insights(df)
     
-    return {"insights": insights}
+    return clean_json({"insights": insights})
 
 @router.delete("/file/{file_id}")
 async def delete_file(file_id: str):

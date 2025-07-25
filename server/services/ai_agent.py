@@ -5,7 +5,7 @@ import numpy as np
 from groq import Groq
 import json
 import asyncio
-
+from services.utils import clean_json
 from .data_processor import DataProcessor
 from .chart_generator import ChartGenerator
 
@@ -169,10 +169,8 @@ class AIAgent:
     async def generate_insights(self, df: pd.DataFrame, operation_results: Dict[str, Any] = None) -> Dict[str, Any]:
         """Generate final insights and summary"""
         
-        # Get basic analysis
         basic_info = self.data_processor.get_basic_info(df)
         
-        # Generate AI insights
         insights_prompt = f"""
         Based on this data analysis:
         - Data shape: {basic_info['shape']}
@@ -184,6 +182,7 @@ class AIAgent:
         Return insights as a JSON object with keys: key_findings, recommendations, next_steps.
         """
         
+        ai_output = None
         try:
             response = self.groq_client.chat.completions.create(
                 messages=[
@@ -194,17 +193,20 @@ class AIAgent:
                 temperature=0.2,
                 max_tokens=512
             )
-            
-            insights = json.loads(response.choices[0].message.content)
-            
+            ai_output = response.choices[0].message.content
+            insights = json.loads(ai_output)
         except Exception as e:
             insights = {
                 "key_findings": ["Analysis completed successfully"],
                 "recommendations": ["Review the processed data"],
                 "next_steps": ["Continue with further analysis"]
             }
+            ai_output = None
         
-        return insights
+        return {
+            "insights": insights,
+            "ai_output": ai_output
+        }
     
     async def process_data(self, df: pd.DataFrame, operation: str, options: Dict[str, Any]) -> Dict[str, Any]:
         """Main method to process data using AI workflow"""
@@ -229,7 +231,7 @@ class AIAgent:
             else:
                 charts = operation_results.get("charts", [])
             
-            return {
+            result = {
                 "success": True,
                 "operation": operation,
                 "analysis": analysis,
@@ -238,7 +240,7 @@ class AIAgent:
                 "insights": insights,
                 "recommendations": recommendations
             }
-            
+            return clean_json(result)
         except Exception as e:
             return {
                 "success": False,
