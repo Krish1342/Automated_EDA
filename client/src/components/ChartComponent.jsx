@@ -1,33 +1,49 @@
 import Plot from "react-plotly.js";
 import { useState } from "react";
-import { Download, Maximize2, Eye } from "lucide-react";
+import { Download, Maximize2, Eye, AlertTriangle } from "lucide-react";
 
 const ChartComponent = ({ chart, className = "" }) => {
   const [isFullscreen, setIsFullscreen] = useState(false);
 
+  // Robust parse: try to parse chart.data, catch errors
+  let plotData = null;
+  let parseError = null;
   if (!chart || !chart.data) {
+    parseError = "No chart data available.";
+  } else {
+    try {
+      plotData = typeof chart.data === "string" ? JSON.parse(chart.data) : chart.data;
+      // Validate plotData contains expected structure
+      if (!plotData.data || !plotData.layout) {
+        throw new Error("Chart data does not contain 'data' or 'layout' fields");
+      }
+    } catch (e) {
+      parseError = "Chart data is invalid or corrupt. " + e.message;
+      plotData = null;
+    }
+  }
+
+  // If data missing or parse failed, show fallback UI
+  if (parseError) {
     return (
       <div
         className={`bg-white rounded-xl shadow-lg border border-gray-200 p-6 ${className}`}
       >
         <div className="flex items-center justify-center h-64 text-gray-500">
           <div className="text-center">
-            <Eye className="w-12 h-12 mx-auto mb-2 text-gray-300" />
-            <p>No chart data available</p>
+            <AlertTriangle className="w-12 h-12 mx-auto mb-2 text-yellow-400" />
+            <p>{parseError}</p>
           </div>
         </div>
       </div>
     );
   }
 
-  const plotData = JSON.parse(chart.data);
-
   const handleDownload = () => {
-    // Trigger download of the chart as PNG
     const element = document.getElementById(`chart-${chart.id}`);
     if (element) {
       const plotlyDiv = element.querySelector(".plotly");
-      if (plotlyDiv) {
+      if (plotlyDiv && window.Plotly) {
         window.Plotly.downloadImage(plotlyDiv, {
           format: "png",
           width: 1200,
@@ -38,11 +54,9 @@ const ChartComponent = ({ chart, className = "" }) => {
     }
   };
 
-  const toggleFullscreen = () => {
-    setIsFullscreen(!isFullscreen);
-  };
+  const toggleFullscreen = () => setIsFullscreen(!isFullscreen);
 
-  // Enhanced layout configuration for better responsiveness
+  // Responsive layout helper
   const getResponsiveLayout = (isFullscreen = false) => ({
     ...plotData.layout,
     autosize: true,
@@ -65,7 +79,6 @@ const ChartComponent = ({ chart, className = "" }) => {
       x: 0.5,
       font: { size: isFullscreen ? 12 : 10 },
     },
-    // Ensure axes are properly configured
     xaxis: {
       ...plotData.layout?.xaxis,
       automargin: true,
@@ -145,7 +158,7 @@ const ChartComponent = ({ chart, className = "" }) => {
         {/* Chart Type Badge */}
         <div className="px-6 py-3 bg-gray-50 border-t border-gray-100">
           <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-            {chart.type.replace("_", " ").toUpperCase()}
+            {chart.type?.replace("_", " ").toUpperCase()}
           </span>
         </div>
       </div>

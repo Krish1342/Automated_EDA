@@ -47,7 +47,9 @@ const ResultsPage = () => {
 
       // Load additional charts for visualization
       if (operationData?.operation === "visualize" || !results.charts) {
-        loadCharts();
+        const chartType = operationData?.options?.chart_types || "all";
+        loadCharts(chartType);
+        console.log("Selected chartType being sent:", chartType);
       }
 
       // Load AI insights if not already present
@@ -57,15 +59,29 @@ const ResultsPage = () => {
     }
   }, [results, operationData]);
 
-  const loadCharts = async () => {
+  const loadCharts = async (chartType = "") => {
     setIsLoadingCharts(true);
     try {
+      const mode = operationData?.mode || "manual";
+      const params = new URLSearchParams();
+
+      // Only append chart_type if it's not "all"
+      if (chartType && chartType.toLowerCase() !== "all") {
+        params.append("chart_types", chartType); // Ex: "Distribution"
+      }
+
+      params.append("mode", mode);
+      console.log("Chart types param:", params.toString());
+
       const response = await fetch(
-        `http://localhost:8000/api/charts/${fileId}`
+        `http://localhost:8000/api/charts/${fileId}?${params.toString()}`
       );
       if (response.ok) {
         const data = await response.json();
+        console.log("Charts response:", data);
         setCharts(data.charts || []);
+      } else {
+        toast.error("Failed to load charts from backend");
       }
     } catch (error) {
       console.error("Error loading charts:", error);
@@ -94,14 +110,8 @@ const ResultsPage = () => {
   };
 
   const downloadResults = () => {
-    const dataStr = JSON.stringify(results, null, 2);
-    const dataBlob = new Blob([dataStr], { type: "application/json" });
-    const url = URL.createObjectURL(dataBlob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `eda_results_${fileId}.json`;
-    link.click();
-    URL.revokeObjectURL(url);
+    const url = `http://localhost:8000${fileData?.download_url}`;
+    window.open(url, "_blank");
   };
 
   const goBack = () => {
@@ -152,8 +162,8 @@ const ResultsPage = () => {
                       Original Shape
                     </p>
                     <p className="text-2xl font-bold text-blue-800">
-                      {results.cleaning_summary.original_shape?.[0]?.toLocaleString()} ×{" "}
-                      {results.cleaning_summary.original_shape?.[1]}
+                      {results.cleaning_summary.original_shape?.[0]?.toLocaleString()}{" "}
+                      × {results.cleaning_summary.original_shape?.[1]}
                     </p>
                   </div>
                   <div className="bg-green-50 rounded-lg p-4">
@@ -161,8 +171,8 @@ const ResultsPage = () => {
                       Cleaned Shape
                     </p>
                     <p className="text-2xl font-bold text-green-800">
-                      {results.cleaning_summary.cleaned_shape?.[0]?.toLocaleString()} ×{" "}
-                      {results.cleaning_summary.cleaned_shape?.[1]}
+                      {results.cleaning_summary.cleaned_shape?.[0]?.toLocaleString()}{" "}
+                      × {results.cleaning_summary.cleaned_shape?.[1]}
                     </p>
                   </div>
                   <div className="bg-red-50 rounded-lg p-4">
@@ -295,7 +305,9 @@ const ResultsPage = () => {
                         }
                         strokeWidth="8"
                         strokeLinecap="round"
-                        strokeDasharray={`${(results.data_quality.score / 100) * 339} 339`}
+                        strokeDasharray={`${
+                          (results.data_quality.score / 100) * 339
+                        } 339`}
                         transform="rotate(-90 60 60)"
                       />
                     </svg>
@@ -304,7 +316,9 @@ const ResultsPage = () => {
                         <div className="text-3xl font-bold text-gray-800">
                           {Math.round(results.data_quality.score)}%
                         </div>
-                        <div className="text-sm text-gray-600">Quality Score</div>
+                        <div className="text-sm text-gray-600">
+                          Quality Score
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -449,13 +463,15 @@ const ResultsPage = () => {
             </div>
           </div>
 
-          <button
-            onClick={downloadResults}
-            className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            <Download className="w-4 h-4" />
-            <span>Download Results</span>
-          </button>
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={downloadResults}
+              className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              <Download className="w-4 h-4" />
+              <span>Download Dataset</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -564,36 +580,41 @@ const ResultsPage = () => {
           <div className="fade-in">
             {isLoadingInsights ? (
               <LoadingSpinner message="Generating AI insights..." />
-            ) : insights ? (
+            ) : insights && insights.insights ? (
               <div className="space-y-6">
-                {Object.entries(insights).map(([key, value]) => (
-                  <div
-                    key={key}
-                    className="bg-white rounded-xl shadow-lg border border-gray-200 p-6"
-                  >
-                    <h3 className="text-xl font-semibold mb-4 text-gray-800 capitalize">
-                      {key.replace(/_/g, " ")}
-                    </h3>
-                    <div className="text-gray-700">
-                      {Array.isArray(value) ? (
-                        <ul className="space-y-3">
-                          {value.map((item, index) => (
-                            <li key={index} className="flex items-start space-x-3">
-                              <span className="text-blue-500 mt-1 text-lg">•</span>
-                              <span className="leading-relaxed">{item}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      ) : (
-                        <p className="leading-relaxed">{value}</p>
-                      )}
-                    </div>
-                  </div>
-                ))}
+                <div className="bg-white rounded-xl shadow-lg border p-6">
+                  <h3 className="text-2xl font-bold mb-4">Key Findings</h3>
+                  <ul className="list-disc list-inside space-y-2">
+                    {insights.insights.key_findings.map((finding, idx) => (
+                      <li key={idx} className="text-gray-800">
+                        {finding}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                <div className="bg-white rounded-xl shadow-lg border p-6">
+                  <h3 className="text-2xl font-bold mb-4">Recommendations</h3>
+                  <ul className="list-disc list-inside space-y-2">
+                    {insights.insights.recommendations.map((rec, idx) => (
+                      <li key={idx} className="text-gray-800">
+                        {rec}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                <div className="bg-white rounded-xl shadow-lg border p-6">
+                  <h3 className="text-2xl font-bold mb-4">Next Steps</h3>
+                  <ul className="list-disc list-inside space-y-2">
+                    {insights.insights.next_steps.map((step, idx) => (
+                      <li key={idx} className="text-gray-800">
+                        {step}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               </div>
             ) : (
               <div className="text-center py-16">
-                <Bot className="w-16 h-16 text-gray-300 mx-auto mb-4" />
                 <p className="text-gray-500 mb-4 text-lg">
                   No AI insights available
                 </p>

@@ -57,17 +57,19 @@ const OperationSelector = ({ onSelectOperation, selectedFile }) => {
 
   const handleOperationSelect = (operationId) => {
     setSelectedOperation(operationId);
-    setSelectedMode("");
-    setShowOptions(false);
+    setSelectedMode(""); // Reset mode when operation changes
+    setOptions({}); // Reset options when operation changes
+    setShowOptions(false); // Hide options when operation changes
   };
 
   const handleModeSelect = (modeId) => {
     setSelectedMode(modeId);
+    setOptions({}); // Reset options when mode changes
     if (modeId === "manual") {
       setShowOptions(true);
     } else {
       setShowOptions(false);
-      handleSubmit(modeId, {});
+      handleSubmit(modeId, {}); // Submit immediately for AI mode
     }
   };
 
