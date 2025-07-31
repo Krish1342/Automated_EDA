@@ -8,5 +8,4 @@ const LoadingSpinner = ({ message = "Loading...", className = "" }) => {
     </div>
   );
 };
-
 export default LoadingSpinner;

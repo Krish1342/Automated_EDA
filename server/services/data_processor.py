@@ -158,8 +158,7 @@ class DataProcessor:
                     self.scaler = MinMaxScaler()
                 
                 transformed_df[numerical_cols] = self.scaler.fit_transform(transformed_df[numerical_cols])
-                operations_performed.append(f"Applied {scaling_method} scaling to numerical columns")
-        
+                operations_performed.append(f"Applied {scaling_method} scaling to numerical columns")  
         # Encoding categorical variables
         encoding_method = options.get("encoding_method", "none")
         

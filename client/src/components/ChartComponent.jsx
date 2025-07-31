@@ -22,7 +22,6 @@ const ChartComponent = ({ chart, className = "" }) => {
       plotData = null;
     }
   }
-
   // If data missing or parse failed, show fallback UI
   if (parseError) {
     return (

@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { Bot, User, Settings, Zap } from "lucide-react";
 
 const OperationSelector = ({ onSelectOperation, selectedFile }) => {
   const [selectedOperation, setSelectedOperation] = useState("");
@@ -43,14 +42,14 @@ const OperationSelector = ({ onSelectOperation, selectedFile }) => {
       id: "manual",
       title: "Manual Mode",
       description: "Configure specific operations and parameters",
-      icon: <Settings className="w-6 h-6" />,
+      icon: <span>⚙️</span>,
       color: "bg-gray-100 border-gray-300 hover:bg-gray-200",
     },
     {
       id: "ai",
       title: "AI Mode",
       description: "Let AI automatically analyze and process your data",
-      icon: <Bot className="w-6 h-6" />,
+      icon: <span>🤖</span>,
       color: "bg-indigo-100 border-indigo-300 hover:bg-indigo-200",
     },
   ];
@@ -59,17 +58,18 @@ const OperationSelector = ({ onSelectOperation, selectedFile }) => {
     setSelectedOperation(operationId);
     setSelectedMode(""); // Reset mode when operation changes
     setOptions({}); // Reset options when operation changes
-    setShowOptions(false); // Hide options when operation changes
+    setShowOptions(true);
   };
 
   const handleModeSelect = (modeId) => {
     setSelectedMode(modeId);
-    setOptions({}); // Reset options when mode changes
     if (modeId === "manual") {
       setShowOptions(true);
     } else {
+      const defaultOpts = getDefaultOptions(selectedOperation);
+      setOptions(defaultOpts);
       setShowOptions(false);
-      handleSubmit(modeId, {}); // Submit immediately for AI mode
+      handleSubmit(modeId, defaultOpts); // AI mode auto-submits
     }
   };
 
@@ -84,200 +84,135 @@ const OperationSelector = ({ onSelectOperation, selectedFile }) => {
     }
   };
 
-  const renderOptions = () => {
-    if (!showOptions || selectedMode !== "manual") return null;
-
-    const getOptionsForOperation = () => {
-      switch (selectedOperation) {
-        case "clean":
-          return (
-            <div className="space-y-4">
-              <div>
-                <label className="form-label">Missing Values Strategy</label>
-                <select
-                  className="form-input"
-                  value={options.missing_strategy || "impute"}
-                  onChange={(e) =>
-                    setOptions({ ...options, missing_strategy: e.target.value })
-                  }
-                >
-                  <option value="drop">Drop rows with missing values</option>
-                  <option value="impute">Impute missing values</option>
-                </select>
-              </div>
-
-              {options.missing_strategy === "impute" && (
-                <>
-                  <div>
-                    <label className="form-label">Numerical Imputation</label>
-                    <select
-                      className="form-input"
-                      value={options.numerical_impute_strategy || "mean"}
-                      onChange={(e) =>
-                        setOptions({
-                          ...options,
-                          numerical_impute_strategy: e.target.value,
-                        })
-                      }
-                    >
-                      <option value="mean">Mean</option>
-                      <option value="median">Median</option>
-                      <option value="most_frequent">Most Frequent</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="form-label">Categorical Imputation</label>
-                    <select
-                      className="form-input"
-                      value={
-                        options.categorical_impute_strategy || "most_frequent"
-                      }
-                      onChange={(e) =>
-                        setOptions({
-                          ...options,
-                          categorical_impute_strategy: e.target.value,
-                        })
-                      }
-                    >
-                      <option value="most_frequent">Most Frequent</option>
-                      <option value="constant">Constant Value</option>
-                    </select>
-                  </div>
-                </>
-              )}
-
-              <div className="flex items-center">
-                <input
-                  type="checkbox"
-                  id="remove_outliers"
-                  checked={options.remove_outliers || false}
-                  onChange={(e) =>
-                    setOptions({
-                      ...options,
-                      remove_outliers: e.target.checked,
-                    })
-                  }
-                  className="mr-2"
-                />
-                <label htmlFor="remove_outliers" className="text-sm">
-                  Remove outliers
-                </label>
-              </div>
-            </div>
-          );
-
-        case "transform":
-          return (
-            <div className="space-y-4">
-              <div>
-                <label className="form-label">Scaling Method</label>
-                <select
-                  className="form-input"
-                  value={options.scaling_method || "standard"}
-                  onChange={(e) =>
-                    setOptions({ ...options, scaling_method: e.target.value })
-                  }
-                >
-                  <option value="none">No Scaling</option>
-                  <option value="standard">Standard Scaling</option>
-                  <option value="minmax">Min-Max Scaling</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="form-label">Encoding Method</label>
-                <select
-                  className="form-input"
-                  value={options.encoding_method || "label"}
-                  onChange={(e) =>
-                    setOptions({ ...options, encoding_method: e.target.value })
-                  }
-                >
-                  <option value="none">No Encoding</option>
-                  <option value="label">Label Encoding</option>
-                  <option value="onehot">One-Hot Encoding</option>
-                </select>
-              </div>
-
-              <div className="flex items-center">
-                <input
-                  type="checkbox"
-                  id="create_features"
-                  checked={options.create_features || false}
-                  onChange={(e) =>
-                    setOptions({
-                      ...options,
-                      create_features: e.target.checked,
-                    })
-                  }
-                  className="mr-2"
-                />
-                <label htmlFor="create_features" className="text-sm">
-                  Create interaction features
-                </label>
-              </div>
-            </div>
-          );
-
-        case "visualize":
-          return (
-            <div className="space-y-4">
-              <div>
-                <label className="form-label">Chart Types</label>
-                <select
-                  className="form-input"
-                  value={options.chart_types || "all"}
-                  onChange={(e) =>
-                    setOptions({ ...options, chart_types: e.target.value })
-                  }
-                >
-                  <option value="all">All Charts</option>
-                  <option value="distribution">Distribution Charts</option>
-                  <option value="correlation">Correlation Analysis</option>
-                  <option value="relationships">Relationship Charts</option>
-                  <option value="categorical">Categorical Analysis</option>
-                </select>
-              </div>
-            </div>
-          );
-
-        default:
-          return null;
-      }
-    };
-
-    return (
-      <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-        <h4 className="font-semibold mb-4">Configuration Options</h4>
-        {getOptionsForOperation()}
-        <div className="mt-6 flex space-x-3">
-          <button
-            onClick={() => handleSubmit()}
-            className="btn-primary flex items-center space-x-2"
-          >
-            <Zap className="w-4 h-4" />
-            <span>Start Processing</span>
-          </button>
-          <button
-            onClick={() => setShowOptions(false)}
-            className="btn-secondary"
-          >
-            Cancel
-          </button>
-        </div>
-      </div>
-    );
+  const getDefaultOptions = (operation) => {
+    switch (operation) {
+      case "clean":
+        return {
+          missing_strategy: "drop",
+          drop_columns: [],
+        };
+      case "transform":
+        return {
+          encoding_method: "none",
+          scaling_method: "standard",
+        };
+      case "classify":
+        return {
+          target_column: "",
+          classifier_type: "logistic",
+        };
+      case "visualize":
+        return {
+          chart_types: "all",
+        };
+      default:
+        return {};
+    }
   };
 
-  if (!selectedFile) {
-    return (
-      <div className="text-center py-8">
-        <p className="text-gray-500">
-          Please upload a file first to begin analysis
-        </p>
-      </div>
-    );
-  }
+  const renderOptions = () => {
+    if (!showOptions) return null;
+
+    switch (selectedOperation) {
+      case "clean":
+        return (
+          <div className="mt-6 p-4 bg-gray-50 rounded-lg space-y-4">
+            <div>
+              <label className="form-label">Missing Value Strategy</label>
+              <select
+                className="form-input"
+                value={options.missing_strategy || "drop"}
+                onChange={(e) =>
+                  setOptions({ ...options, missing_strategy: e.target.value })
+                }
+              >
+                <option value="drop">Drop Rows</option>
+                <option value="mean">Fill with Mean</option>
+                <option value="median">Fill with Median</option>
+                <option value="most_frequent">Fill with Mode</option>
+              </select>
+            </div>
+            <button onClick={() => handleSubmit()} className="btn-primary">
+              Start Cleaning
+            </button>
+          </div>
+        );
+      case "transform":
+        return (
+          <div className="mt-6 p-4 bg-gray-50 rounded-lg space-y-4">
+            <div>
+              <label className="form-label">Scaling Method</label>
+              <select
+                className="form-input"
+                value={options.scaling_method || "none"}
+                onChange={(e) =>
+                  setOptions({ ...options, scaling_method: e.target.value })
+                }
+              >
+                <option value="none">No Scaling</option>
+                <option value="standard">Standard Scaling</option>
+                <option value="minmax">Min-Max Scaling</option>
+              </select>
+            </div>
+            <div>
+              <label className="form-label">Encoding Method</label>
+              <select
+                className="form-input"
+                value={options.encoding_method || "none"}
+                onChange={(e) =>
+                  setOptions({ ...options, encoding_method: e.target.value })
+                }
+              >
+                <option value="none">No Encoding</option>
+                <option value="label">Label Encoding</option>
+                <option value="onehot">One-Hot Encoding</option>
+              </select>
+            </div>
+            <button onClick={() => handleSubmit()} className="btn-primary">
+              Start Transformation
+            </button>
+          </div>
+        );
+
+      case "classify":
+        return (
+          <div className="mt-6 p-4 bg-gray-50 rounded-lg space-y-4">
+            <div>
+              <label className="form-label">Classifier Type</label>
+              <select
+                className="form-input"
+                value={options.classifier_type || "logistic"}
+                onChange={(e) =>
+                  setOptions({ ...options, classifier_type: e.target.value })
+                }
+              >
+                <option value="logistic">Logistic Regression</option>
+                <option value="knn">K-Nearest Neighbors</option>
+                <option value="decision_tree">Decision Tree</option>
+              </select>
+            </div>
+            <div>
+              <label className="form-label">Target Column</label>
+              <input
+                className="form-input"
+                type="text"
+                placeholder="Enter target column name"
+                value={options.target_column || ""}
+                onChange={(e) =>
+                  setOptions({ ...options, target_column: e.target.value })
+                }
+              />
+            </div>
+            <button onClick={() => handleSubmit()} className="btn-primary">
+              Start Classification
+            </button>
+          </div>
+        );
+
+      default:
+        return null;
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -288,20 +223,17 @@ const OperationSelector = ({ onSelectOperation, selectedFile }) => {
             <div
               key={operation.id}
               onClick={() => handleOperationSelect(operation.id)}
-              className={`p-4 border-2 rounded-lg cursor-pointer transition-all
-                ${
-                  selectedOperation === operation.id
-                    ? "border-blue-500 bg-blue-50"
-                    : operation.color
-                }`}
+              className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                selectedOperation === operation.id
+                  ? "border-blue-500 bg-blue-50"
+                  : operation.color
+              }`}
             >
               <div className="flex items-center space-x-3">
                 <span className="text-2xl">{operation.icon}</span>
                 <div>
                   <h4 className="font-semibold">{operation.title}</h4>
-                  <p className="text-sm text-gray-600">
-                    {operation.description}
-                  </p>
+                  <p className="text-sm text-gray-600">{operation.description}</p>
                 </div>
               </div>
             </div>
@@ -317,12 +249,11 @@ const OperationSelector = ({ onSelectOperation, selectedFile }) => {
               <div
                 key={mode.id}
                 onClick={() => handleModeSelect(mode.id)}
-                className={`p-4 border-2 rounded-lg cursor-pointer transition-all
-                  ${
-                    selectedMode === mode.id
-                      ? "border-blue-500 bg-blue-50"
-                      : mode.color
-                  }`}
+                className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                  selectedMode === mode.id
+                    ? "border-blue-500 bg-blue-50"
+                    : mode.color
+                }`}
               >
                 <div className="flex items-center space-x-3">
                   {mode.icon}

@@ -62,7 +62,6 @@ const HomePage = () => {
         "View your processed data, insights, and interactive visualizations",
     },
   ];
-
   return (
     <div className="max-w-7xl mx-auto">
       {/* Hero Section */}

@@ -20,7 +20,6 @@ const UploadPage = () => {
       });
     }
   };
-
   const formatShape = (shape) => {
     return `${shape[0].toLocaleString()} rows × ${shape[1]} columns`;
   };

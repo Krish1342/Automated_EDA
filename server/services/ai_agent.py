@@ -267,7 +267,6 @@ Output ONLY a JSON object and nothing else.
             }
             for _, row in filtered.iterrows()
         ]
-
     def validate_chart_specs(
         self, df: pd.DataFrame, chart_specs: List[Dict[str, Any]]
     ) -> List[Dict[str, str]]:

@@ -1,0 +1,6 @@
+{
+  "column_types": {
+    "shrimp": {
+      "dtype": "object",
+      "unique_count": 115,
+      "null_count": 

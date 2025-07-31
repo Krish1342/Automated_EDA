@@ -216,7 +216,6 @@ const AnalysisPage = () => {
           selectedFile={fileInfo}
         />
       </div>
-
       {/* Help Section */}
       <div className="mt-8 bg-blue-50 border border-blue-200 rounded-lg p-6">
         <h3 className="font-semibold text-blue-900 mb-2">

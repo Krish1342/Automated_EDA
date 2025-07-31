@@ -7,8 +7,7 @@ from typing import Optional, Dict, Any
 import uuid
 from datetime import datetime
 
-
-from services.utils import clean_json  # Make sure this is defined!
+from services.utils import clean_json
 from services.data_processor import DataProcessor
 from services.ai_agent import AIAgent
 from services.chart_generator import ChartGenerator
@@ -16,11 +15,17 @@ from services.chart_generator import ChartGenerator
 router = APIRouter()
 uploaded_files = {}
 
+# Allowed extensions now include CSV, Excel, JSON, TSV and TXT.
+ALLOWED_EXTENSIONS = (".csv", ".xlsx", ".json", ".tsv", ".txt")
+
 
 @router.post("/upload")
 async def upload_file(file: UploadFile = File(...)):
-    if not file.filename.endswith(".csv"):
-        raise HTTPException(status_code=400, detail="Only CSV files are allowed")
+    if not file.filename.lower().endswith(ALLOWED_EXTENSIONS):
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid file type. Allowed types: CSV, Excel, JSON, TSV, TXT",
+        )
     file_id = str(uuid.uuid4())
     file_path = f"uploads/{file_id}_{file.filename}"
     os.makedirs("uploads", exist_ok=True)
@@ -28,7 +33,19 @@ async def upload_file(file: UploadFile = File(...)):
         content = await file.read()
         await f.write(content)
     try:
-        df = pd.read_csv(file_path)
+        # Read the file into a DataFrame based on its extension
+        filename_lower = file.filename.lower()
+        if filename_lower.endswith(".csv"):
+            df = pd.read_csv(file_path)
+        elif filename_lower.endswith(".xlsx"):
+            df = pd.read_excel(file_path)
+        elif filename_lower.endswith(".json"):
+            df = pd.read_json(file_path)
+        elif filename_lower.endswith((".tsv", ".txt")):
+            df = pd.read_csv(file_path, sep="\t")
+        else:
+            raise HTTPException(status_code=400, detail="Unsupported file type")
+
         uploaded_files[file_id] = {
             "filename": file.filename,
             "file_path": file_path,
@@ -48,18 +65,84 @@ async def upload_file(file: UploadFile = File(...)):
     except Exception as e:
         if os.path.exists(file_path):
             os.remove(file_path)
-        raise HTTPException(status_code=400, detail=f"Error reading CSV file: {str(e)}")
+        raise HTTPException(status_code=400, detail=f"Error reading file: {str(e)}")
 
 
 @router.get("/file/{file_id}/info")
 async def get_file_info(file_id: str):
     if file_id not in uploaded_files:
         raise HTTPException(status_code=404, detail="File not found")
+
     file_info = uploaded_files[file_id]
-    df = pd.read_csv(file_info["file_path"])
-    processor = DataProcessor()
-    basic_info = processor.get_basic_info(df)
-    return basic_info
+    # Read the file into a DataFrame. Use a robust method based on file extension.
+    filename_lower = file_info["filename"].lower()
+    try:
+        if filename_lower.endswith(".csv"):
+            df = pd.read_csv(file_info["file_path"])
+        elif filename_lower.endswith((".xlsx", ".xls")):
+            df = pd.read_excel(file_info["file_path"])
+        elif filename_lower.endswith(".json"):
+            df = pd.read_json(file_info["file_path"])
+        elif filename_lower.endswith((".tsv", ".txt")):
+            df = pd.read_csv(file_info["file_path"], sep="\t")
+        else:
+            raise HTTPException(status_code=400, detail="Unsupported file type")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error reading file: {str(e)}")
+
+    # Compute missing values for the file
+    file_info["missing_values"] = df.isnull().sum().to_dict()
+
+    # Build summaries for numerical and categorical columns
+    numerical_summary = {}
+    categorical_summary = {}
+    for col in df.columns:
+        if df[col].dtype in ["int64", "float64"]:
+            numerical_summary[col] = {
+                "mean": df[col].mean(),
+                "std": df[col].std(),
+                "min": df[col].min(),
+                "max": df[col].max(),
+            }
+        else:
+            categorical_summary[col] = {
+                "unique": df[col].nunique(),
+                "top": df[col].mode()[0] if not df[col].mode().empty else None,
+            }
+
+    file_info["numerical_summary"] = numerical_summary
+    file_info["categorical_summary"] = categorical_summary
+
+    return clean_json(file_info)
+
+
+def filter_result(result: Dict[str, Any], operation: str) -> Dict[str, Any]:
+    """
+    Filter the result based on required keys for each operation.
+    Similar to how charts are filtered to ensure valid Plotly JSON,
+    here we verify that cleaning, transformation, and classification
+    results contain expected sections.
+    """
+    if operation == "clean":
+        required = ["cleaning_summary", "operations_performed", "download_url"]
+        if all(key in result for key in required):
+            return result
+        else:
+            return {}
+    elif operation == "transform":
+        required = ["transformation_summary", "download_url"]
+        if all(key in result for key in required):
+            return result
+        else:
+            return {}
+    elif operation == "classify":
+        required = ["data_quality", "column_types", "download_url"]
+        if all(key in result for key in required):
+            return result
+        else:
+            return {}
+    else:
+        return result
 
 
 @router.post("/process")
@@ -83,9 +166,9 @@ async def process_data(
         else:
             if operation == "clean":
                 # Clean operation
+                print("Cleaning data with options:", processed_options)
                 result = processor.clean_data(df, processed_options)
                 cleaned_df = pd.DataFrame(result["cleaned_data"])
-
                 cleaned_dir = "uploads/cleaned"
                 os.makedirs(cleaned_dir, exist_ok=True)
                 cleaned_file_path = f"{cleaned_dir}/{file_id}_cleaned.csv"
@@ -94,28 +177,26 @@ async def process_data(
                     raise HTTPException(
                         status_code=500, detail="Cleaned file not found"
                     )
-
                 result["download_url"] = f"/static/cleaned/{file_id}_cleaned.csv"
             elif operation == "transform":
                 # Transform operation
+                print("Transforming data with options:", processed_options)
                 result = processor.transform_data(df, processed_options)
                 if "transformed_data" in result:
                     transformed_df = pd.DataFrame(result["transformed_data"])
-
                     transformed_dir = "uploads/transformed"
                     os.makedirs(transformed_dir, exist_ok=True)
                     transformed_file_path = (
                         f"{transformed_dir}/{file_id}_transformed.csv"
                     )
                     transformed_df.to_csv(transformed_file_path, index=False)
-
                     result["download_url"] = (
                         f"/static/transformed/{file_id}_transformed.csv"
                     )
             elif operation == "classify":
                 # Classification operation
+                print("Classifying data with options:", processed_options)
                 result = processor.classify_data(df, processed_options)
-                # Save classification results as a JSON file
                 classification_dir = "uploads/classification"
                 os.makedirs(classification_dir, exist_ok=True)
                 classification_file_path = (
@@ -123,15 +204,18 @@ async def process_data(
                 )
                 with open(classification_file_path, "w", encoding="utf-8") as f:
                     json.dump(result, f, indent=2)
-
                 result["download_url"] = (
                     f"/static/classification/{file_id}_classification.json"
                 )
             elif operation == "visualize":
+                print("Generating charts with options:", processed_options)
                 result = chart_generator.generate_charts(df, processed_options)
             else:
                 raise HTTPException(status_code=400, detail="Invalid operation")
-        return clean_json(result)
+
+        # Filter the result similar to charts filtering:
+        filtered = filter_result(result, operation)
+        return clean_json(filtered)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Processing error: {str(e)}")
 

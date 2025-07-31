@@ -51,6 +51,7 @@ const ResultsPage = () => {
         loadCharts(chartType);
         console.log("Selected chartType being sent:", chartType);
       }
+      
 
       // Load AI insights if not already present
       if (!results.insights && operationData?.mode === "ai") {
@@ -110,10 +111,17 @@ const ResultsPage = () => {
   };
 
   const downloadResults = () => {
-    const url = `http://localhost:8000${fileData?.download_url}`;
+  // Use the download_url from the processing results if available,
+  // otherwise fall back to fileData.download_url.
+  const downloadUrl = results?.download_url || fileData?.download_url;
+  if (downloadUrl) {
+    const url = `http://localhost:8000${downloadUrl}`;
     window.open(url, "_blank");
-  };
-
+  } else {
+    console.error("No download URL available");
+    toast.error("Download URL is not available");
+  }
+};
   const goBack = () => {
     navigate(`/analysis/${fileId}`, { state: { fileData } });
   };

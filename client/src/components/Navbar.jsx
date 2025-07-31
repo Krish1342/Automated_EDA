@@ -30,7 +30,6 @@ const Navbar = () => {
               <Home className="w-4 h-4" />
               <span>Home</span>
             </Link>
-
             <Link
               to="/upload"
               className={`flex items-center space-x-2 px-4 py-2 rounded-md text-white transition-colors ${isActive(

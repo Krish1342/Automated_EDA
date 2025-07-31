@@ -6,12 +6,12 @@ import toast from "react-hot-toast";
 const FileUpload = ({ onFileUploaded, isUploading = false }) => {
   const [selectedFile, setSelectedFile] = useState(null);
 
+  // Accept multiple file types: CSV, Excel (xls, xlsx), JSON, TSV, and TXT.
   const onDrop = useCallback((acceptedFiles, rejectedFiles) => {
     if (rejectedFiles.length > 0) {
-      toast.error("Please upload only CSV files");
+      toast.error("Please upload a CSV, Excel, JSON, TSV, or TXT file");
       return;
     }
-
     const file = acceptedFiles[0];
     if (file) {
       setSelectedFile(file);
@@ -22,7 +22,13 @@ const FileUpload = ({ onFileUploaded, isUploading = false }) => {
     onDrop,
     accept: {
       "text/csv": [".csv"],
-      "application/vnd.ms-excel": [".csv"],
+      "application/vnd.ms-excel": [".xls"],
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [
+        ".xlsx",
+      ],
+      "application/json": [".json"],
+      "text/tab-separated-values": [".tsv"],
+      "text/plain": [".txt"],
     },
     multiple: false,
     maxSize: 100 * 1024 * 1024, // 100MB
@@ -87,13 +93,13 @@ const FileUpload = ({ onFileUploaded, isUploading = false }) => {
         >
           <input {...getInputProps()} />
           <Upload className="w-12 h-12 mx-auto mb-4 text-gray-400" />
-
           {isDragActive ? (
-            <p className="text-blue-600 text-lg">Drop the CSV file here...</p>
+            <p className="text-blue-600 text-lg">Drop the file here...</p>
           ) : (
             <div>
               <p className="text-gray-600 text-lg mb-2">
-                Drag & drop a CSV file here, or click to select
+                Drag & drop a CSV, Excel, JSON, TSV, or TXT file here, or click
+                to select
               </p>
               <p className="text-sm text-gray-500">Maximum file size: 100MB</p>
             </div>
@@ -111,7 +117,6 @@ const FileUpload = ({ onFileUploaded, isUploading = false }) => {
                 </p>
               </div>
             </div>
-
             <button
               onClick={removeFile}
               disabled={isUploading}
@@ -120,12 +125,11 @@ const FileUpload = ({ onFileUploaded, isUploading = false }) => {
               <X className="w-5 h-5" />
             </button>
           </div>
-
           <div className="mt-4 flex space-x-3">
             <button
               onClick={handleUpload}
               disabled={isUploading}
-              className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white py-2 px-4 rounded-md transition-colors flex items-center justify-center space-x-2"
+              className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white py-2 px-4 rounded-md transition-colors"
             >
               {isUploading ? (
                 <>
@@ -138,14 +142,6 @@ const FileUpload = ({ onFileUploaded, isUploading = false }) => {
                   <span>Upload File</span>
                 </>
               )}
-            </button>
-
-            <button
-              onClick={removeFile}
-              disabled={isUploading}
-              className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors disabled:opacity-50"
-            >
-              Cancel
             </button>
           </div>
         </div>

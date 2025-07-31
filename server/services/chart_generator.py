@@ -263,7 +263,6 @@ class ChartGenerator:
             print("🔤 Categorical cols:", categorical_cols)
 
         return charts
-
     def generate_charts(
         self, df: pd.DataFrame, options: Dict[str, Any]
     ) -> Dict[str, Any]:
